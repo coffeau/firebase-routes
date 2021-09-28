@@ -1,15 +1,11 @@
 <template>
   <v-container class="px-8" fluid>
-    <h1 class="h1">Meu Bloco de Notas</h1>
 
-    <v-form>
-      <v-text-field
-        label="Título"
-        v-model="novaTarefa"
-      >
-        <v-icon slot="append" @click="adicionar">mdi-send</v-icon>
-      </v-text-field>
-    </v-form>
+    <v-row class="py-7">
+      <h1 class="h1 ms-2">Meu Bloco de Notas</h1>
+      <dialogg v-on:adicionar='adicionar'></dialogg>
+    </v-row>
+    
     <v-divider></v-divider>
 
       <v-card id="card" class="d-flex justify-center align-center flex-column ma-10 elevation-0">
@@ -20,38 +16,68 @@
           </h2>
         </v-card-title>
       </v-card>
-    <v-list>
-      <v-list-item-group class="d-flex justify-between flex-column">
-        <v-list-item
-          class="lime darken-1 rounded-br-xl elevation-1 d-inline-flex flex-wrap mt-3 pa-md-4"
-          v-for="tarefa of tarefas"
-          :key="tarefa.id"
-        >
-          <v-list-item>
-            {{ tarefa.título }}
-          </v-list-item>
-          <v-list-item class="white--text">
-            Editado em: {{ tarefa.dataGravacao }}
-            <v-spacer></v-spacer>
-            <v-list-item-action @click.stop='deletar(tarefa.id)'>
-              <v-icon color="red">mdi-delete</v-icon>
-            </v-list-item-action>
-          </v-list-item>
-        </v-list-item>
-      </v-list-item-group>
-    </v-list>
+    
+    <v-container fluid>
+      <v-row dense>
+          <v-col
+            v-for="tarefa of tarefas"
+            :key="tarefa.id"
+            :cols="tarefa.flex"
+          >
+            <v-card class="lime darken-1 elevation-1 pa-md-2">
+              <v-list-item @click.stop='mostrarDialog(tarefa)'>
+                <h4 class="h4">
+                {{ tarefa.título }}
+                </h4>
+              </v-list-item>
+              <v-list-item class="white--text">
+                Editado em: {{ tarefa.dataGravacao }}
+                <v-spacer></v-spacer>
+                <v-list-item-action @click.stop='deletar(tarefa.id)'>
+                  <v-icon color="red">mdi-delete</v-icon>
+                </v-list-item-action>
+              </v-list-item>
+            </v-card>
+          </v-col>
+      </v-row>
+    </v-container>
 
+ <v-row>
+    <v-dialog v-model="showDialog" max-width="800px">
+      <v-card>
+        <v-card-title>
+          {{titulo}}
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-subtitle class="my-2">
+            <p style="white-space: pre-line">
+              {{texto}}
+            </p>
+        </v-card-subtitle>
+        <v-card-text>
+            <v-footer> {{data}} </v-footer>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+  </v-row>
   </v-container>
 </template>
 
 <script>
 import * as fb from "@/plugins/firebase";
+import dialogg from '../components/dialog.vue';
+
 export default {
+  components: {dialogg} ,
   data() {
     return {
       uid: "",
-      novaTarefa: "",
+      novaTarefa: {},
       tarefas: [],
+      showDialog: false,
+      titulo: "",
+      texto: "",
+      data: "",
     };
   },
   mounted() {
@@ -68,6 +94,7 @@ export default {
         this.tarefas.push({
           id: doc.id,
           título: doc.data().título,
+          texto: doc.data().texto,
           dataGravacao: doc.data().dataGravacao
         });
       if (this.tarefas.length > 0){
@@ -77,18 +104,26 @@ export default {
         }
       }
     },
-    async adicionar() {
+    async adicionar(novaTarefa) {
+      this.novaTarefa = novaTarefa
       await fb.tasksCollection.add({
-        título: this.novaTarefa,
+        título: novaTarefa.titulo,
+        texto: novaTarefa.texto,
         dataGravacao: new Date().toISOString().slice(0, 10),
         owner: this.uid,
       });
-      this.novaTarefa = "";
+      this.novaTarefa = {};
       this.buscarTarefas();
     },
     async deletar(id){
       await fb.tasksCollection.doc(id).delete()
       this.buscarTarefas()
+    },
+    mostrarDialog(tarefa){
+      this.titulo = tarefa.título
+      this.texto = tarefa.texto
+      this.data = tarefa.dataGravacao
+      this.showDialog = !this.showDialog
     }
   },
 };
